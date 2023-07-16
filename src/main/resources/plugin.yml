@@ -1,0 +1,6 @@
+name: trace_table_master
+main: org.EMAC.listener.TraceTable
+version: '1.0'
+author: EnriqueMark
+api-version: '1.18'
+
