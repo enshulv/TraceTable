@@ -11,9 +11,9 @@ import org.EMAC.listener.CommonPlugin;
 public class GetForm extends CommonPlugin{
     private HikariDataSource hikari;
 
-    public HikariDataSource getForm(String name){
+    public HikariDataSource getForm(){
         
-        hikari = getDataSource("TraceTable");
+        hikari = getDataSource();
         
         try (Connection connection = hikari.getConnection()) {
             String[] create = {
