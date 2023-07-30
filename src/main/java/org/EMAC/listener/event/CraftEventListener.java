@@ -18,6 +18,6 @@ public class CraftEventListener implements Listener {
     @EventHandler
     public void onCraftItem(CraftItemEvent event) {
 
-        // 你原来的 onCraftItem 方法的代码在这里
+        // 投产都存JsonText
     }
 }

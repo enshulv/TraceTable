@@ -1,4 +1,4 @@
-name: trace_table_master
+name: TraceTable
 main: org.EMAC.listener.TraceTable
 version: '1.0'
 author: EnriqueMark

@@ -16,6 +16,5 @@ public class EventRegister {
         Bukkit.getPluginManager().registerEvents(new SmeltEventListener(plugin), plugin);
         Bukkit.getPluginManager().registerEvents(new EnchantEventListener(plugin), plugin);
         Bukkit.getPluginManager().registerEvents(new PlayerQuitEventListener(plugin), plugin);
-        // 这里可以继续添加更多的事件监听器
     }
 }
