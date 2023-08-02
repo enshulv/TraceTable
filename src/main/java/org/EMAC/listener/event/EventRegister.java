@@ -12,9 +12,9 @@ public class EventRegister {
     }
 
     public void registerAll() {
-        Bukkit.getPluginManager().registerEvents(new CraftEventListener(plugin), plugin);
-        Bukkit.getPluginManager().registerEvents(new SmeltEventListener(plugin), plugin);
-        Bukkit.getPluginManager().registerEvents(new EnchantEventListener(plugin), plugin);
-        Bukkit.getPluginManager().registerEvents(new PlayerQuitEventListener(plugin), plugin);
+        // Bukkit.getPluginManager().registerEvents(new CraftEventListener(plugin), plugin);
+        // Bukkit.getPluginManager().registerEvents(new SmeltEventListener(plugin), plugin);
+        // Bukkit.getPluginManager().registerEvents(new EnchantEventListener(plugin), plugin);
+        // Bukkit.getPluginManager().registerEvents(new PlayerQuitEventListener(plugin), plugin);
     }
 }
