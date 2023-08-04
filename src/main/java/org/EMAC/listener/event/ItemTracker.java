@@ -6,11 +6,18 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import org.EMAC.listener.util.ItemInfo;
+import org.EMAC.listener.util.ItemInfoUtil;
+import org.EMAC.listener.util.ContainerMoveInfo;
 import org.EMAC.listener.util.ItemDetails;
 
 import java.util.ArrayList;
@@ -25,6 +32,7 @@ public class ItemTracker implements Listener {
     private final Map<UUID, ItemInfo> dropMap = new ConcurrentHashMap<>();
     private final Map<UUID, ItemInfo> placeMap = new ConcurrentHashMap<>();
     private final Map<UUID, ContainerMoveInfo> moveMap = new ConcurrentHashMap<>();
+    private final Map<UUID, String> playerContainerMap = new ConcurrentHashMap<>();
 
     // 监听玩家拾取物品的事件
     @EventHandler
@@ -38,23 +46,8 @@ public class ItemTracker implements Listener {
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
         String enchString = ItemDetails.getEnchantmentString(itemStack);
-        int durability = ItemDetails.getDurability(itemStack);
 
-        pickupMap.compute(playerId, (uuid, iteminfo) -> {
-            if (iteminfo != null
-                    && iteminfo.itemName.equals(itemName)
-                    && iteminfo.enchant.equals(enchString)
-                    && iteminfo.damage == durability) {
-                iteminfo.setAmount(iteminfo.amount + amount);
-                iteminfo.timestamps.add(System.currentTimeMillis());
-                return iteminfo;
-            } else {
-                ItemInfo newItemDropInfo = new ItemInfo(
-                        player.getName(), itemName, enchString, durability, amount,
-                        new ArrayList<>(Arrays.asList(System.currentTimeMillis())));
-                return newItemDropInfo;
-            }
-        });
+        ItemInfoUtil.computeItemInfo(pickupMap, playerId, player, itemName, enchString, amount);
     }
 
     // 监听玩家丢弃物品的事件
@@ -66,23 +59,9 @@ public class ItemTracker implements Listener {
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
         String enchString = ItemDetails.getEnchantmentString(itemStack);
-        int durability = ItemDetails.getDurability(itemStack);
 
-        dropMap.compute(playerId, (uuid, iteminfo) -> {
-            if (iteminfo != null
-                    && iteminfo.itemName.equals(itemName)
-                    && iteminfo.enchant.equals(enchString)
-                    && iteminfo.damage == durability) {
-                iteminfo.setAmount(iteminfo.amount + amount);
-                iteminfo.timestamps.add(System.currentTimeMillis());
-                return iteminfo;
-            } else {
-                ItemInfo newItemDropInfo = new ItemInfo(
-                        player.getName(), itemName, enchString, durability, amount,
-                        new ArrayList<>(Arrays.asList(System.currentTimeMillis())));
-                return newItemDropInfo;
-            }
-        });
+        ItemInfoUtil.computeItemInfo(dropMap, playerId, player, itemName, enchString, amount);
+        ;
     }
 
     // 监听玩家放置物品的事件
@@ -94,38 +73,66 @@ public class ItemTracker implements Listener {
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
         String enchString = ItemDetails.getEnchantmentString(itemStack);
-        int durability = ItemDetails.getDurability(itemStack);
 
-        placeMap.compute(playerId, (uuid, iteminfo) -> {
-            if (iteminfo != null
-                    && iteminfo.itemName.equals(itemName)
-                    && iteminfo.enchant.equals(enchString)
-                    && iteminfo.damage == durability) {
-                iteminfo.setAmount(iteminfo.amount + amount);
-                iteminfo.timestamps.add(System.currentTimeMillis());
-                return iteminfo;
-            } else {
-                ItemInfo newItemPlaceInfo = new ItemInfo(
-                        player.getName(), itemName, enchString, durability, amount,
-                        new ArrayList<>(Arrays.asList(System.currentTimeMillis())));
-                return newItemPlaceInfo;
-            }
-        });
+        ItemInfoUtil.computeItemInfo(placeMap, playerId, player, itemName, enchString, amount);
     }
 
-    // 监听玩家在背包和其他容器之间移动物品的事件
+    // 监听玩家的容器打开操作
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player))
+            return;
+        UUID uuid = event.getPlayer().getUniqueId();
+        String inventoryName = event.getInventory().getType().name();
+        if (!(playerContainerMap.containsKey(uuid))) {
+            playerContainerMap.put(uuid, inventoryName);
+        }
+        ;
+    }
+
+    // 监听玩家的容器关闭操作
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player))
+            return;
+        UUID uuid = event.getPlayer().getUniqueId();
+        String inventoryName = event.getInventory().getType().name();
+        if (playerContainerMap.containsKey(uuid)) {
+            playerContainerMap.remove(uuid, inventoryName);
+        }
+        ;
+    }
+
+    // 监听玩家对容器的点击事件
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         // 确认是玩家触发的事件
-        if (!(event.getWhoClicked() instanceof Player))
-            return;
-        // 获取移动物品的玩家
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        
+        //获取被点击的物品栏内容
+        ItemStack currentItem = event.getCurrentItem();
+        if (currentItem == null || currentItem.getType() == Material.AIR) return;
+
         Player player = (Player) event.getWhoClicked();
-        // 获取移动的物品堆
-        ItemStack itemStack = event.getCurrentItem();
-        // 确保物品堆不为空
-        if (itemStack == null || itemStack.getType() == Material.AIR)
-            return;
+        UUID playerId = player.getUniqueId();
+        //获取光标拿起的物品内容
+        ItemStack cursor = event.getCursor();
+        // 获取目前点击的容器的类型
+        InventoryType inventoryType = event.getClickedInventory().getType();
+        String clickedInventoryName = inventoryType.name();
+        int amount;
+        String enchString;
+
+        // 物品从一个容器移动到另一个容器时
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+        && playerContainerMap.containsKey(playerId)) {
+            //如果是从背包移动到其他
+            String objectContainerName = playerContainerMap.get(playerId);
+            if (clickedInventoryName.equals("PLAYER")){
+                ItemInfoUtil.ItemMoveOperation(moveMap, playerId, player, currentItem.getItemMeta().getDisplayName(),objectContainerName, enchString, amount);
+            }else if (clickedInventoryName.equals(objectContainerName)){
+                ItemInfoUtil.ItemMoveOperation(moveMap, playerId, player, currentItem.getItemMeta().getDisplayName(),"PLAYER", enchString, amount);
+            }
+        }
+
         // 如果玩家按住shift键点击，那么物品将会直接移动到背包或者容器
         // 这种情况我们认为是移动到容器
         if (event.isShiftClick()) {
@@ -137,14 +144,3 @@ public class ItemTracker implements Listener {
                     new ItemInfo(itemStack.getType(), itemStack.getAmount(), System.currentTimeMillis()));
         }
     }
-
-    // 容器类型字段
-    static class ContainerMoveInfo extends ItemInfo {
-        String containerType;
-
-        ContainerMoveInfo(Material material, int quantity, String containerType, long timestamp) {
-            super(material, quantity, timestamp);
-            this.containerType = containerType;
-        }
-    }
-}
