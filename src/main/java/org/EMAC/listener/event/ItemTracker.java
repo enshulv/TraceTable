@@ -8,31 +8,23 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryType.SlotType;
 import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import org.EMAC.listener.util.ItemInfo;
 import org.EMAC.listener.util.ItemInfoUtil;
-import org.EMAC.listener.util.ContainerMoveInfo;
-import org.EMAC.listener.util.ItemDetails;
+import org.EMAC.listener.info.ItemInfo;
+import org.EMAC.listener.util.ItemDetailsUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ItemTracker implements Listener {
 
-    private final Map<UUID, ItemInfo> pickupMap = new ConcurrentHashMap<>();
-    private final Map<UUID, ItemInfo> dropMap = new ConcurrentHashMap<>();
-    private final Map<UUID, ItemInfo> placeMap = new ConcurrentHashMap<>();
-    private final Map<UUID, ContainerMoveInfo> moveMap = new ConcurrentHashMap<>();
-    private final Map<UUID, String> playerContainerMap = new ConcurrentHashMap<>();
+    private final Map<UUID, List<ItemInfo>> operationMap = new ConcurrentHashMap<>();
 
     // 监听玩家拾取物品的事件
     @EventHandler
@@ -45,9 +37,9 @@ public class ItemTracker implements Listener {
         ItemStack itemStack = event.getEntity().getItemStack();
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
-        String enchString = ItemDetails.getEnchantmentString(itemStack);
+        String enchString = ItemDetailsUtil.getEnchantmentString(itemStack);
 
-        ItemInfoUtil.computeItemInfo(pickupMap, playerId, player, itemName, enchString, amount);
+        ItemInfoUtil.computeItemInfo(operationMap, playerId, player, itemName, "pickup", enchString, amount);
     }
 
     // 监听玩家丢弃物品的事件
@@ -58,9 +50,9 @@ public class ItemTracker implements Listener {
         ItemStack itemStack = event.getItemDrop().getItemStack();
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
-        String enchString = ItemDetails.getEnchantmentString(itemStack);
+        String enchString = ItemDetailsUtil.getEnchantmentString(itemStack);
 
-        ItemInfoUtil.computeItemInfo(dropMap, playerId, player, itemName, enchString, amount);
+        ItemInfoUtil.computeItemInfo(operationMap, playerId, player, itemName, "drop", enchString, amount);
         ;
     }
 
@@ -72,75 +64,66 @@ public class ItemTracker implements Listener {
         ItemStack itemStack = event.getItemInHand();
         String itemName = itemStack.getType().name();
         int amount = itemStack.getAmount();
-        String enchString = ItemDetails.getEnchantmentString(itemStack);
+        String enchString = ItemDetailsUtil.getEnchantmentString(itemStack);
 
-        ItemInfoUtil.computeItemInfo(placeMap, playerId, player, itemName, enchString, amount);
-    }
-
-    // 监听玩家的容器打开操作
-    public void onInventoryOpen(InventoryOpenEvent event) {
-        if (!(event.getPlayer() instanceof Player))
-            return;
-        UUID uuid = event.getPlayer().getUniqueId();
-        String inventoryName = event.getInventory().getType().name();
-        if (!(playerContainerMap.containsKey(uuid))) {
-            playerContainerMap.put(uuid, inventoryName);
-        }
-        ;
-    }
-
-    // 监听玩家的容器关闭操作
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player))
-            return;
-        UUID uuid = event.getPlayer().getUniqueId();
-        String inventoryName = event.getInventory().getType().name();
-        if (playerContainerMap.containsKey(uuid)) {
-            playerContainerMap.remove(uuid, inventoryName);
-        }
-        ;
+        ItemInfoUtil.computeItemInfo(operationMap, playerId, player, itemName, "place", enchString, amount);
     }
 
     // 监听玩家对容器的点击事件
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         // 确认是玩家触发的事件
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        
-        //获取被点击的物品栏内容
+        if (!(event.getWhoClicked() instanceof Player))
+            return;
+
+        // 确认点击的不是空气
         ItemStack currentItem = event.getCurrentItem();
-        if (currentItem == null || currentItem.getType() == Material.AIR) return;
+        if (currentItem == null || currentItem.getType() == Material.AIR)
+            return;
+
+        // 确认是容器移动操作
+        if (event.getAction() != InventoryAction.MOVE_TO_OTHER_INVENTORY)
+            return;
 
         Player player = (Player) event.getWhoClicked();
         UUID playerId = player.getUniqueId();
-        //获取光标拿起的物品内容
         ItemStack cursor = event.getCursor();
-        // 获取目前点击的容器的类型
         InventoryType inventoryType = event.getClickedInventory().getType();
         String clickedInventoryName = inventoryType.name();
-        int amount;
-        String enchString;
+        String objectContainerName = event.getView().getTopInventory().getType().name();
+        SlotType slotType = event.getSlotType();
+        int amount = ItemDetailsUtil.getDurability(cursor);
+        String enchString = ItemDetailsUtil.getEnchantmentString(cursor);
+        Boolean backpackClick = false;
+        Boolean playerClickObject = objectContainerName.equals("PLAYER");
 
-        // 物品从一个容器移动到另一个容器时
-        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
-        && playerContainerMap.containsKey(playerId)) {
-            //如果是从背包移动到其他
-            String objectContainerName = playerContainerMap.get(playerId);
-            if (clickedInventoryName.equals("PLAYER")){
-                ItemInfoUtil.ItemMoveOperation(moveMap, playerId, player, currentItem.getItemMeta().getDisplayName(),objectContainerName, enchString, amount);
-            }else if (clickedInventoryName.equals(objectContainerName)){
-                ItemInfoUtil.ItemMoveOperation(moveMap, playerId, player, currentItem.getItemMeta().getDisplayName(),"PLAYER", enchString, amount);
-            }
+        // 判断点击容器是否为玩家背包栏位
+        switch (slotType) {
+            case QUICKBAR:
+                backpackClick = true;
+                break;
+            case CONTAINER:
+                if (clickedInventoryName.equals("PLAYER")) {
+                    backpackClick = true;
+                }
+                break;
+            case ARMOR:
+                backpackClick = true;
+                break;
+            default:
+                break;
         }
 
-        // 如果玩家按住shift键点击，那么物品将会直接移动到背包或者容器
-        // 这种情况我们认为是移动到容器
-        if (event.isShiftClick()) {
-            moveMap.put(player.getUniqueId().toString(), new ContainerMoveInfo(itemStack.getType(),
-                    itemStack.getAmount(), event.getInventory().getType().name(), System.currentTimeMillis()));
-        } else {
-            // 否则我们认为是从容器移动到背包
-            pickupMap.put(player.getUniqueId().toString(),
-                    new ItemInfo(itemStack.getType(), itemStack.getAmount(), System.currentTimeMillis()));
+        // 从背包移动到其他容器
+        if (backpackClick && !(playerClickObject)) {
+            String stitching = String.format("%s:%s", objectContainerName, slotType.name());
+            ItemInfoUtil.computeItemInfo(operationMap, playerId, player, currentItem.getItemMeta().getDisplayName(),
+                    stitching, enchString, amount);
+        }
+        // 从其他容器移动到背包
+        else if (!(backpackClick) && playerClickObject) {
+            ItemInfoUtil.computeItemInfo(operationMap, playerId, player, currentItem.getItemMeta().getDisplayName(),
+                    "PLAYER", enchString, amount);
         }
     }
+}

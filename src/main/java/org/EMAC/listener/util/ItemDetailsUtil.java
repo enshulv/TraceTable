@@ -7,7 +7,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.Damageable;
 
-public class ItemDetails {
+public class ItemDetailsUtil {
     // 获取附魔
     public static String getEnchantmentString(ItemStack itemStack) {
         ItemMeta meta = itemStack.getItemMeta();
@@ -24,7 +24,7 @@ public class ItemDetails {
             Integer level = entry.getValue();
     
             // 把附魔名和等级添加到字符串
-            enchantsStringBuilder.append(enchantment.getName()).append(": ").append(level).append(", ");
+            enchantsStringBuilder.append(enchantment.getKey()).append(": ").append(level).append(", ");
         }
     
         // 删除最后的逗号和空格
