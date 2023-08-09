@@ -6,14 +6,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.EMAC.listener.CommonPlugin;
+public class GetForm{
 
-public class GetForm extends CommonPlugin{
-    private HikariDataSource hikari;
-
-    public HikariDataSource getForm(){
-        
-        hikari = getDataSource();
+    public HikariDataSource getForm(HikariDataSource hikari){
         
         try (Connection connection = hikari.getConnection()) {
             String[] create = {
@@ -29,7 +24,8 @@ public class GetForm extends CommonPlugin{
                 "  `enchant` VARCHAR(200)," +
                 "  `amount` INT NOT NULL," +
                 "  `timestamps` TEXT NOT NULL," +
-                "  FOREIGN KEY (`UUID`) REFERENCES `user_table`(`UUID`)" +
+                "  FOREIGN KEY (`UUID`) REFERENCES `user_table`(`UUID`)," +
+                "UNIQUE KEY unique_values (item_name, operation, enchant)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='操作表';",
             };
             for (String s : create) {

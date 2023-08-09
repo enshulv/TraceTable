@@ -13,11 +13,11 @@ public class ItemDetailsUtil {
         ItemMeta meta = itemStack.getItemMeta();
         Map<Enchantment, Integer> enchants = meta.getEnchants();
 
-        StringBuilder enchantsStringBuilder = new StringBuilder();
-
         if (enchants.isEmpty()) {
-            return null;
+            return "null";
         }
+
+        StringBuilder enchantsStringBuilder = new StringBuilder();
 
         for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
             Enchantment enchantment = entry.getKey();

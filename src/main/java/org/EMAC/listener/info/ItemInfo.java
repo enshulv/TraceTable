@@ -10,7 +10,6 @@ public class ItemInfo {
     private String itemName;
     private String enchant;
     private String operation;
-    private int damage;
     private int amount;
     private List<Long> timestamps;
 

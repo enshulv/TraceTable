@@ -1,0 +1,21 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run Minecraft Server",
+            "request": "launch",
+            "mainClass": "io.izzel.arclight.server.Launcher",  
+            "args": ["--nogui"],
+            "projectName": "TraceTable", // 替换为你的 Maven 项目名称
+            "cwd": "E:/Desktop/server-f--",  // 替换为你的服务器目录的路径
+            "classPaths": [
+                "${workspaceFolder}/target/classes",
+                "E:/Desktop/server-f--/server.jar"  // 替换为实际的 JAR 文件路径
+            ]
+          },
+    ]
+}
